@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id                String   @id @default(uuid())
+  name              String
+  slug              String   @unique
+  autoAssignEnabled Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  users             User[]
+  tickets           Ticket[]
+  auditEvents       AuditEvent[]
+  tags              Tag[]
+  cannedResponses   CannedResponse[]
+  notifications     Notification[]
+  ticketTemplates   TicketTemplate[]
+  watchers          TicketWatcher[]
+  ticketLinks       TicketLink[]
+  escalationRules   EscalationRule[]
+}
+
+model User {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  email          String
+  passwordHash   String
+  firstName      String
+  lastName       String
+  role           Role
+  isActive       Boolean      @default(true)
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  assignedTickets Ticket[]    @relation("AssignedTickets")
+  createdTickets  Ticket[]    @relation("CreatedTickets")
+  comments        TicketComment[]
+  auditEvents     AuditEvent[]
+  
+  cannedResponses CannedResponse[]
+  notifications   Notification[]
+  ticketTemplates TicketTemplate[]
+  watchTickets    TicketWatcher[]
+  ticketLinks     TicketLink[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+}
+
+model Ticket {
+  id              String         @id @default(uuid())
+  organizationId  String
+  organization    Organization   @relation(fields: [organizationId], references: [id])
+
+  title           String
+  description     String
+  status          TicketStatus   @default(OPEN)
+  priority        TicketPriority @default(MEDIUM)
+
+  createdById     String
+  createdBy       User           @relation("CreatedTickets", fields: [createdById], references: [id])
+
+  assignedToId    String?
+  assignedTo      User?          @relation("AssignedTickets", fields: [assignedToId], references: [id])
+
+  slaDueAt        DateTime?
+  resolvedAt      DateTime?
+  closedAt        DateTime?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  comments        TicketComment[]
+  attachments     Attachment[]
+  activities      TicketActivity[]
+  tags            Tag[]          @relation("TagsOnTickets")
+  
+  mergedIntoId    String?
+  mergedInto      Ticket?        @relation("MergedTickets", fields: [mergedIntoId], references: [id])
+  mergedFrom      Ticket[]       @relation("MergedTickets")
+  isMerged        Boolean        @default(false)
+  
+  watchers        TicketWatcher[]
+  sourceLinks     TicketLink[]   @relation("SourceLinks")
+  targetLinks     TicketLink[]   @relation("TargetLinks")
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, assignedToId])
+  @@index([organizationId, createdById])
+}
+
+model Tag {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  color          String
+  createdAt      DateTime     @default(now())
+
+  tickets        Ticket[]     @relation("TagsOnTickets")
+
+  @@index([organizationId])
+}
+
+model CannedResponse {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  title          String
+  body           String
+  category       String?
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Notification {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  type           NotificationType
+  title          String
+  body           String
+  entityType     String?
+  entityId       String?
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, userId])
+}
+
+model TicketTemplate {
+  id                  String       @id @default(uuid())
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id])
+  name                String
+  titlePattern        String
+  descriptionTemplate String
+  defaultPriority     TicketPriority
+  createdById         String
+  createdBy           User         @relation(fields: [createdById], references: [id])
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model TicketWatcher {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  ticketId       String
+  ticket         Ticket       @relation(fields: [ticketId], references: [id])
+  userId         String
+  user           User         @relation(fields: [userId], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@unique([ticketId, userId])
+  @@index([organizationId])
+}
+
+model TicketLink {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  sourceTicketId String
+  sourceTicket   Ticket       @relation("SourceLinks", fields: [sourceTicketId], references: [id])
+  targetTicketId String
+  targetTicket   Ticket       @relation("TargetLinks", fields: [targetTicketId], references: [id])
+  linkType       TicketLinkType
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([sourceTicketId])
+  @@index([targetTicketId])
+}
+
+model EscalationRule {
+  id                   String       @id @default(uuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  triggerMinutesBefore Int
+  escalatePriorityTo   TicketPriority
+  notifyRoles          Role[]
+  createdAt            DateTime     @default(now())
+
+  @@index([organizationId])
+}
+
+model TicketComment {
+  id              String   @id @default(uuid())
+  organizationId  String
+  ticketId        String
+  ticket          Ticket   @relation(fields: [ticketId], references: [id])
+
+  authorId        String
+  author          User     @relation(fields: [authorId], references: [id])
+
+  body            String
+  isInternal      Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, ticketId])
+}
+
+model TicketActivity {
+  id              String   @id @default(uuid())
+  organizationId  String
+  ticketId        String
+  ticket          Ticket   @relation(fields: [ticketId], references: [id])
+
+  actorId         String?
+  action          String
+  field           String?
+  oldValue        String?
+  newValue        String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, ticketId])
+}
+
+model Attachment {
+  id              String   @id @default(uuid())
+  organizationId  String
+  ticketId        String
+  ticket          Ticket   @relation(fields: [ticketId], references: [id])
+
+  fileName        String
+  fileUrl         String
+  mimeType        String
+  sizeBytes       Int
+
+  uploadedById    String
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, ticketId])
+}
+
+model AuditEvent {
+  id              String       @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  actorId         String?
+  actor           User?        @relation(fields: [actorId], references: [id])
+
+  entityType      String
+  entityId        String
+  action          String
+  metadata        Json?
+
+  createdAt       DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid())
+  userId      String
+  tokenHash   String
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  AGENT
+  REQUESTER
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_ON_CUSTOMER
+  WAITING_ON_INTERNAL
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum NotificationType {
+  TICKET_ASSIGNED
+  COMMENT_ADDED
+  SLA_BREACH
+}
+
+enum TicketLinkType {
+  RELATED
+  BLOCKED_BY
+  DUPLICATE_OF
+}

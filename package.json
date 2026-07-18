@@ -1,0 +1,15 @@
+{
+  "name": "antihelpdesk",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "start": "npm run start --workspaces",
+    "dev": "npm run dev --workspaces",
+    "build": "npm run build --workspaces",
+    "test": "npm run test --workspaces"
+  }
+}

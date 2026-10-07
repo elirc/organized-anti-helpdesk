@@ -1,5 +1,7 @@
 # AntiHelpdesk Engineering Upskilling Curriculum
 
+> Snapshot note: this repo is an organized snapshot of `elirc/antihelpdesk`. Its code and `docsclaude/` pages matched that repo (which also adds an `astraupskill/` course and `tests/*.mjs` files not present here), so the `docsclaude/` refinements made there are carried over here.
+
 This repository serves as a real-world sandbox for modern, multi-tenant SaaS engineering. The curriculum inside this directory is designed to take an engineer with basic JavaScript/TypeScript knowledge and upskill them into a senior-level engineer capable of writing, maintaining, and reviewing production-grade enterprise software.
 
 Unlike generic tutorials, every concept here is anchored directly in the production codebase of this multi-tenant helpdesk portal. You will see why specific design patterns were chosen, identify where the code has trade-offs or fragilities, and practice through real drills and mock tickets.

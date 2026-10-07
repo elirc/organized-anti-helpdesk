@@ -25,12 +25,16 @@ describe('Workflow Status Machine Unit Tests', () => {
   });
 
   it('should block invalid transition pathways', () => {
-    // OPEN -> RESOLVED is blocked (must go through IN_PROGRESS in this test configuration)
-    // Wait, let's verify our status map:
-    // [TicketStatus.OPEN]: [TicketStatus.IN_PROGRESS, TicketStatus.RESOLVED, TicketStatus.CLOSED]
-    // Ah, in our actual machine, OPEN -> RESOLVED is allowed! Let's check a blocked transition:
-    // CLOSED -> RESOLVED is blocked (must go through OPEN first)
+    // The real map (ALLOWED_TRANSITIONS in ticket-status-machine.ts) says
+    // OPEN may only move to IN_PROGRESS — a ticket cannot jump straight to RESOLVED:
+    expect(canTransition(TicketStatus.OPEN, TicketStatus.RESOLVED)).toBe(false);
+    // CLOSED is terminal: its allowed list is empty, so every transition out is blocked.
     expect(canTransition(TicketStatus.CLOSED, TicketStatus.RESOLVED)).toBe(false);
+  });
+
+  it('should allow reopening a resolved ticket', () => {
+    // RESOLVED -> IN_PROGRESS is the deliberate "customer replied, it is not fixed" path.
+    expect(canTransition(TicketStatus.RESOLVED, TicketStatus.IN_PROGRESS)).toBe(true);
   });
 });
 ```
